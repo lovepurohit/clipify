@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -184,4 +185,67 @@ func main() {
 	if err := http.ListenAndServe(localIP+port, nil); err != nil {
 		log.Fatal("Error starting server on local IP: ", err)
 	}
+}
+
+// getClips handles the request to retrieve clips from the database with pagination
+func getClipsPaginated(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get pagination parameters
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 10 // Default limit
+	}
+
+	offset := (page - 1) * limit
+
+	// Retrieve paginated clips from the database
+	rows, err := db.Query("SELECT id, text, language FROM clips LIMIT ? OFFSET ?", limit, offset)
+	if err != nil {
+		http.Error(w, "Failed to fetch clips from database", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var clips []Clip
+	for rows.Next() {
+		var clip Clip
+		err := rows.Scan(&clip.ID, &clip.Text, &clip.Language)
+		if err != nil {
+			http.Error(w, "Failed to scan clip", http.StatusInternalServerError)
+			return
+		}
+		clips = append(clips, clip)
+	}
+
+	// Get the total number of clips for pagination info
+	var totalClips int
+	err = db.QueryRow("SELECT COUNT(*) FROM clips").Scan(&totalClips)
+	if err != nil {
+		http.Error(w, "Failed to fetch total clip count", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate total number of pages
+	totalPages := (totalClips + limit - 1) / limit
+
+	// Respond with the clips and pagination info
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"clips":       clips,
+		"totalPages":  totalPages,
+		"currentPage": page,
+		"totalClips":  totalClips,
+	})
 }

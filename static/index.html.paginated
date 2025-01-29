@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipify - Share Your Clips</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.5.0/lib/core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.5.0/lib/languages/python.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.5.0/lib/languages/javascript.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.5.0/lib/languages/css.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.5.0/lib/languages/html.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        pre {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+        code {
+            font-family: Consolas, Monaco, monospace;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-4xl font-semibold text-center mb-4">Clipify - Share Your Clips</h1>
+
+        <div class="mb-6">
+            <textarea id="clip-text" class="w-full p-2 border border-gray-300 rounded" rows="6" placeholder="Enter your clip here..."></textarea>
+        </div>
+
+        <div class="flex justify-between items-center mb-4">
+            <select id="language" class="p-2 border border-gray-300 rounded">
+                <option value="plaintext">Plain Text</option>
+                <option value="python">Python</option>
+                <option value="javascript">JavaScript</option>
+                <option value="css">CSS</option>
+                <option value="html">HTML</option>
+            </select>
+
+            <button id="add-clip" class="p-2 bg-blue-500 text-white rounded">Add Clip</button>
+        </div>
+
+        <h2 class="text-2xl mb-4">Shared Clips</h2>
+
+        <div id="clip-list" class="space-y-4"></div>
+
+        <div id="pagination" class="flex justify-center mt-4"></div>
+    </div>
+
+    <script>
+        const clipTextArea = document.getElementById('clip-text');
+        const addClipButton = document.getElementById('add-clip');
+        const clipList = document.getElementById('clip-list');
+        const pagination = document.getElementById('pagination');
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Function to fetch clips with pagination
+        async function fetchClips(page = 1) {
+            const limit = 10; // Number of clips per page
+            const response = await fetch(`/clips?page=${page}&limit=${limit}`);
+            const data = await response.json();
+
+            // Display clips
+            clipList.innerHTML = '';
+            data.clips.forEach(clip => {
+                const clipElement = document.createElement('div');
+                clipElement.classList.add('bg-white', 'p-4', 'rounded', 'shadow-md');
+                clipElement.innerHTML = `
+                    <h3 class="text-xl font-semibold">Language: ${clip.language}</h3>
+                    <pre><code class="language-${clip.language}">${marked(clip.text)}</code></pre>
+                `;
+                clipList.appendChild(clipElement);
+
+                // Highlight code after rendering
+                hljs.highlightAll();
+            });
+
+            // Update pagination
+            totalPages = data.totalPages;
+            updatePagination();
+        }
+
+        // Function to update pagination controls
+        function updatePagination() {
+            pagination.innerHTML = '';
+            if (currentPage > 1) {
+                const prevButton = document.createElement('button');
+                prevButton.textContent = 'Previous';
+                prevButton.classList.add('px-4', 'py-2', 'bg-blue-500', 'text-white', 'rounded', 'mr-2');
+                prevButton.addEventListener('click', () => {
+                    currentPage--;
+                    fetchClips(currentPage);
+                });
+                pagination.appendChild(prevButton);
+            }
+
+            if (currentPage < totalPages) {
+                const nextButton = document.createElement('button');
+                nextButton.textContent = 'Next';
+                nextButton.classList.add('px-4', 'py-2', 'bg-blue-500', 'text-white', 'rounded');
+                nextButton.addEventListener('click', () => {
+                    currentPage++;
+                    fetchClips(currentPage);
+                });
+                pagination.appendChild(nextButton);
+            }
+        }
+
+        // Add clip function
+        addClipButton.addEventListener('click', async () => {
+            const text = clipTextArea.value;
+            const language = document.getElementById('language').value;
+
+            const clip = { text, language, id: new Date().toISOString() };
+
+            await fetch('/add_clip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(clip),
+            });
+
+            clipTextArea.value = ''; // Clear textarea
+            fetchClips(currentPage); // Refresh clips
+        });
+
+        // Initial fetch of clips
+        fetchClips(currentPage);
+    </script>
+</body>
+</html>
