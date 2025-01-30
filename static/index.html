@@ -41,7 +41,7 @@
     </div>
 
     <!-- Flush Database Section -->
-    <div class="bg-red-600 p-6 rounded-lg shadow-lg mb-8">
+    <div id="flushSection" class="bg-red-600 p-6 rounded-lg shadow-lg mb-8 hidden">
       <h2 class="text-2xl font-semibold text-white mb-4">Flush All Clips</h2>
       <button onclick="flushDatabase()" class="w-full py-3 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors">Flush All Clips</button>
     </div>
@@ -71,6 +71,19 @@
       // If auto-detection is different from the selected language, suggest the detected language
       if (languageSelect.value === 'plaintext' || languageSelect.value === 'javascript') {
         languageSelect.value = detectedLanguage;
+      }
+    }
+
+    // Check if the user is allowed to see the flush button (verify local system access)
+    async function validateUser() {
+      try {
+        const response = await fetch('/validate_user');
+        if (response.ok) {
+          // User is allowed, display the Flush button
+          document.getElementById('flushSection').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Not authorized to flush database:', error);
       }
     }
 
@@ -161,7 +174,7 @@
         });
 
         if (!response.ok) {
-          throw new Error('Failed to flush the database');
+          throw new Error(response.statusText);
         }
 
         // Clear the displayed clips
@@ -169,7 +182,8 @@
         alert("Database flushed successfully!");
       } catch (error) {
         console.error('Error flushing database:', error);
-        alert("Error flushing the database.");
+        //alert("Error flushing the database.");
+        alert(error);
       }
     }
 
@@ -189,6 +203,7 @@
 
     // Initial load of clips
     window.onload = function() {
+      validateUser(); // Check if user is authorized to flush the database
       fetchClips(); // Fetch clips on initial load
     };
   </script>
