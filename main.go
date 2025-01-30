@@ -15,9 +15,12 @@ import (
 
 // Clip represents a shared clipboard clip
 type Clip struct {
-	ID       string `json:"id"`
-	Text     string `json:"text"`
-	Language string `json:"language"`
+	ID         string `json:"id"`
+	Text       string `json:"text"`
+	Language   string `json:"language"`
+	Name       string `json:"name"`
+	DeviceType string `json:"device_type"`
+	Browser    string `json:"browser"`
 }
 
 var db *sql.DB
@@ -35,7 +38,10 @@ func init() {
 	CREATE TABLE IF NOT EXISTS clips (
 		id TEXT PRIMARY KEY,
 		text TEXT,
-		language TEXT
+		language TEXT,
+		name TEXT,
+		device_type TEXT,
+		browser TEXT
 	);
 	`
 	_, err = db.Exec(createTableSQL)
@@ -60,8 +66,8 @@ func addClip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert the clip into the database
-	insertSQL := `INSERT INTO clips (id, text, language) VALUES (?, ?, ?)`
-	_, err = db.Exec(insertSQL, clip.ID, clip.Text, clip.Language)
+	insertSQL := `INSERT INTO clips (id, text, language, name, device_type, browser) VALUES (?, ?, ?, ?, ?, ?)`
+	_, err = db.Exec(insertSQL, clip.ID, clip.Text, clip.Language, clip.Name, clip.DeviceType, clip.Browser)
 	if err != nil {
 		http.Error(w, "Failed to insert clip into database", http.StatusInternalServerError)
 		return
@@ -79,7 +85,7 @@ func getClips(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieve all clips from the database
-	rows, err := db.Query("SELECT id, text, language FROM clips")
+	rows, err := db.Query("SELECT id, text, language, name, device_type, browser FROM clips")
 	if err != nil {
 		http.Error(w, "Failed to fetch clips from database", http.StatusInternalServerError)
 		return
@@ -89,7 +95,7 @@ func getClips(w http.ResponseWriter, r *http.Request) {
 	var clips []Clip
 	for rows.Next() {
 		var clip Clip
-		err := rows.Scan(&clip.ID, &clip.Text, &clip.Language)
+		err := rows.Scan(&clip.ID, &clip.Text, &clip.Language, &clip.Name, &clip.DeviceType, &clip.Browser)
 		if err != nil {
 			http.Error(w, "Failed to scan clip", http.StatusInternalServerError)
 			return
@@ -216,7 +222,7 @@ func getClipsPaginated(w http.ResponseWriter, r *http.Request) {
 	offset := (page - 1) * limit
 
 	// Retrieve paginated clips from the database
-	rows, err := db.Query("SELECT id, text, language FROM clips LIMIT ? OFFSET ?", limit, offset)
+	rows, err := db.Query("SELECT id, text, language, name, device_type, browser FROM clips LIMIT ? OFFSET ?", limit, offset)
 	if err != nil {
 		http.Error(w, "Failed to fetch clips from database", http.StatusInternalServerError)
 		return
