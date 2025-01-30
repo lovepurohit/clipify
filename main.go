@@ -42,12 +42,52 @@ func init() {
 		name TEXT,
 		device_type TEXT,
 		browser TEXT
-	);
+		);
 	`
 	_, err = db.Exec(createTableSQL)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getLocalIP() (string, error) {
+	// Get all network interfaces and check for the local IP
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	// Loop through all interfaces to find the local IP address
+	for _, addr := range addrs {
+		// Check if the address is a valid IP address and is not a loopback address
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String(), nil
+		}
+	}
+
+	return "", fmt.Errorf("local IP not found")
+}
+
+// isRequestFromLocalMachine checks if the request is coming from the local machine (localhost or local IP)
+func isRequestFromLocalMachine(r *http.Request) (bool, string, error) {
+	// Get the local IP address of the system
+	localIP, err := getLocalIP()
+	if err != nil {
+		return false, "Failed to get local IP address", err
+	}
+
+	// Get the IP address of the incoming request
+	clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return false, "Failed to get client IP address", err
+	}
+
+	// Check if the client is accessing from localhost or the local machine's IP
+	if clientIP == "localhost" || clientIP == localIP {
+		return true, "Success", nil
+	}
+
+	return false, "Forbidden", nil
 }
 
 // addClip handles the request to add a new clip to the database
@@ -121,8 +161,19 @@ func flushDatabase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isLocal, msg, err := isRequestFromLocalMachine(r)
+	if err != nil {
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+
+	if !isLocal {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	// Perform the flush by deleting all rows from the clips table
-	_, err := db.Exec("DELETE FROM clips")
+	_, err = db.Exec("DELETE FROM clips")
 	if err != nil {
 		http.Error(w, "Failed to flush the database", http.StatusInternalServerError)
 		return
@@ -133,28 +184,33 @@ func flushDatabase(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Database flushed successfully"))
 }
 
-func getLocalIP() (string, error) {
-	// Get all network interfaces and check for the local IP
-	addrs, err := net.InterfaceAddrs()
+func validateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Use the common function to validate the request
+	isLocal, msg, err := isRequestFromLocalMachine(r)
 	if err != nil {
-		return "", err
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
 	}
 
-	// Loop through all interfaces to find the local IP address
-	for _, addr := range addrs {
-		// Check if the address is a valid IP address and is not a loopback address
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			return ipnet.IP.String(), nil
-		}
+	if isLocal {
+		// Respond with a success status indicating the user is correct
+		w.WriteHeader(http.StatusOK)
+	} else {
+		// Respond with forbidden if the request is not from the local system
+		http.Error(w, "Forbidden", http.StatusForbidden)
 	}
-
-	return "", fmt.Errorf("local IP not found")
 }
 
 func main() {
 	http.HandleFunc("/add_clip", addClip)
 	http.HandleFunc("/clips", getClips)
-	http.HandleFunc("/flush", flushDatabase) // Add the flush handler
+	http.HandleFunc("/flush", flushDatabase)        // Add the flush handler
+	http.HandleFunc("/validate_user", validateUser) // Add the validate user handler
 	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
 
 	// Get the local IP address
