@@ -82,8 +82,10 @@ func isRequestFromLocalMachine(r *http.Request) (bool, string, error) {
 		return false, "Failed to get client IP address", err
 	}
 
+	// fmt.Printf("LocalIP: %s || Client IP: %s\n", localIP, clientIP)
+
 	// Check if the client is accessing from localhost or the local machine's IP
-	if clientIP == "localhost" || clientIP == localIP {
+	if clientIP == "localhost" || clientIP == "127.0.0.1" || clientIP == localIP {
 		return true, "Success", nil
 	}
 
