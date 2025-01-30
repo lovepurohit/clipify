@@ -6,6 +6,8 @@ This is a go shared clipboard which will run a server and open a UI. On the UI, 
 The UI will only be accessible on local network.
 The script will clear the DB or whatever that it is using to store the clipboard data when it exits
 
+To run it in docker, use `--network host` to use host network instead of bridge network
+
 
 ## Phase 1
 1. It will run on one machine.
