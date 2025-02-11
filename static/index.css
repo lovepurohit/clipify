@@ -1,0 +1,116 @@
+body {
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    width: 100%;
+    height: 100%;
+}
+
+
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #ffffff;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #acacac;
+    border-radius: 7px
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #737373;
+}
+
+
+
+
+/* Default styles for dark mode (keep your current dark mode as default) */
+body.dark-mode {
+    background: #1f1f1f;
+    color: #e5e5e5;
+}
+
+/* Light mode styles */
+body.light-mode {
+    background: #ffffff;
+    color: #000000;
+}
+
+body.light-mode .bg-gray-800 {
+    background-color: #f0f0f0;
+}
+
+body.light-mode .bg-gray-700 {
+    background-color: #d1d1d1;
+}
+
+body.light-mode .bg-blue-500 {
+    background-color: #3b82f6;
+}
+
+body.light-mode .bg-purple-500 {
+    background-color: #9333ea;
+}
+
+body.light-mode .bg-red-500 {
+    background-color: #ef4444;
+}
+
+body.light-mode .text-gray-100 {
+    color: #333333;
+}
+
+body.light-mode .text-gray-400 {
+    color: #888888;
+}
+
+body.light-mode .text-gray-700 {
+    color: #4b5563;
+}
+
+body.light-mode .text-blue-400 {
+    color: #3b82f6;
+}
+
+body.light-mode .bg-gradient-to-r {
+    background: linear-gradient(to right, #3b82f6, #9333ea);
+}
+
+/* Specific colors for buttons and other elements in light mode */
+body.light-mode .bg-blue-500 {
+    background-color: #3b82f6;
+}
+
+body.light-mode .bg-purple-500 {
+    background-color: #9333ea;
+}
+
+body.light-mode .bg-red-500 {
+    background-color: #ef4444;
+}
+
+body.light-mode .bg-gray-700 {
+    background-color: #f1f1f1;
+}
+
+body.light-mode .text-sm {
+    font-size: 0.875rem;
+}
+
+body.light-mode .text-xl {
+    font-size: 1.25rem;
+}
+
+body.light-mode .text-center {
+    text-align: center;
+}
+
+body.light-mode .text-gray-100 {
+    color: #333333;
+}
