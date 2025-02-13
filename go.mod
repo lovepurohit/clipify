@@ -2,10 +2,7 @@ module github.com/go-shared-clipboard
 
 go 1.22.5
 
-require (
-	github.com/mattn/go-sqlite3 v1.14.24
-	modernc.org/sqlite v1.34.5
-)
+require modernc.org/sqlite v1.34.5
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
