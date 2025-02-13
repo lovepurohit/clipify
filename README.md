@@ -1,17 +1,15 @@
-# Clipify Server Documentation
+# Clipify
 
 ## Overview
 
-`Clipify` is a simple web service that allows you to store and manage clips (text/code) data. It provides RESTful endpoints to add, retrieve, and delete (flush) clips data. The server supports both HTTP and HTTPS protocols. It is built using Go and SQLite as the backend database.
+`Clipify` is a simple and secure solution for managing and sharing data across different devices and platforms without the hassle of complicated setups or reliance on external services. It is built using Go and SQLite as the backend database. Here are some reasons why you might find it useful:
 
-The following functionality is provided:
+- **Cross-Device Compatibility**: It allows users to share data across desktops, mobile devices (Android/iOS), and other networked devices. This makes it a versatile tool for different environments and use cases.
+- **Data Security**: By supporting HTTPS, `Clipify` ensures that all data transferred between the client and server is encrypted, making it safe from eavesdropping.
+- **Simplicity**: The `Clipify` is lightweight, easy to set up, and can be run both locally and within a Docker container. It uses SQLite for local storage, which is simple and requires minimal configuration.
+- **Privacy**: All data remains within your local network, providing you complete control over your information without relying on third-party services.
+- **Use Case Flexibility**: Whether you need to manage data for development, personal use, or even automation tasks, `Clipify` offers a simple and efficient way to keep your data synchronized across devices.
 
-- **Add Clip**: Allows adding a new clipboard entry.
-- **Get Clips**: Fetches all stored clips.
-- **Flush Clips**: Clears all the clipboard data in the database. (Only available to IP running the server)
-- **Format Editor**: Formats the text present in the editor.
-
-This server also supports HTTPS for secure communication by providing an SSL certificate.
 
 ![Screenshot](ui.png)
 
@@ -66,12 +64,27 @@ To run the `Clipify` server using Docker, follow the steps below:
 
     The `--network host` flag is necessary for the container to correctly bind to your local machine's network interfaces.
 
-4. **Access the Server**: Once the container is running, the server will be accessible at:
+### Accessing the Clipify
+To access `Clipify` from same or other devices on your local network, follow these steps:
 
-    - **HTTP**: `http://<local_ip>:8080`
-    - **HTTPS**: `https://<local_ip>:8443`
+1. **Find the Local IP of the Device Running Clipify**:
+    - On the device running `Clipify`, find its local IP address. This is the IP address assigned to your device on your local network. You can get it using the following commands:
+        - **Linux/macOS**: `ifconfig` or `ip a`
+        - **Windows**: `ipconfig`
 
-Where `<local_ip>` is the local IP address of your machine. You can get the IP using `ifconfig` or `ipconfig`.
+2. **Ensure Both Devices Are on the Same Network**:
+    - Make sure the client device (e.g., your smartphone, tablet, or another computer) is connected to the same Wi-Fi or local network as the device running `Clipify`.
+
+3. **Open the Clipify Server on Client Devices**:
+    - On your client device, open a web browser (Chrome, Safari, etc.) and enter the local IP address of the server device followed by the port number. For example:
+        - **HTTP**: `http://<local_ip>:8080`
+        - **HTTPS**: `https://<local_ip>:8443`
+
+    Replace `<local_ip>` with the local IP address of the server device.
+
+4. **Access the Data**:
+    - You can now interact with `Clipify` on your client device, adding or viewing clips, and using it just like you would on the device running the server.
+
 
 ### Environment Variables
 
