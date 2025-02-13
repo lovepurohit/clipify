@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clipify</title>
   <script src="script.js" defer></script>
+  <link rel="shortcut icon" type="image/x-icon" href="./logo.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -73,8 +74,9 @@
   <nav class="w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
     <div class="container mx-auto px-1">
       <div class="flex items-center justify-between h-12">
-        <div class="flex items-center space-x-8">
-          <h1 class="text-2xl font-bold gradient-text">Clipify</h1>
+        <div class="flex items-center  justify-center pl-3">
+          <img src="./logo.png" alt="" srcset="" class="w-10 h-10">
+          <h1 class="text-2xl font-bold gradient-text md:ml-0 sm:ml-[-2px]">Clipify</h1>
         </div>
       </div>
     </div>
@@ -132,6 +134,12 @@
                   <span class="hidden md:inline ">Refresh</span>
                 </button>
 
+                <button
+                class="px-4 py-2 flex justify-center items-center gap-2 text-sm rounded-xl truncate bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                id="paste">
+                <i class="fas fa-paste "></i>
+                <span class="hidden md:inline ">Paste</span>
+              </button>
                 <button
                   class="px-4 py-2 text-sm rounded-xl flex justify-center items-center gap-2 truncate bg-purple-50 text-purple-700 hover:bg-purple-100 transition"
                   id="formatCode">
