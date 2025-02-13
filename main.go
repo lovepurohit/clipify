@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -8,7 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -25,9 +27,10 @@ type Clip struct {
 
 var db *sql.DB
 
+// init initializes the database and creates the necessary table
 func init() {
-	// Open SQLite database (creates it if it doesn't exist)
 	var err error
+	// Open SQLite database (creates it if it doesn't exist)
 	db, err = sql.Open("sqlite", "./clips.db")
 	if err != nil {
 		log.Fatal(err)
@@ -50,6 +53,7 @@ func init() {
 	}
 }
 
+// Utility function to get the local IP address of the machine
 func getLocalIP() (string, error) {
 	// Get all network interfaces and check for the local IP
 	addrs, err := net.InterfaceAddrs()
@@ -68,7 +72,7 @@ func getLocalIP() (string, error) {
 	return "", fmt.Errorf("local IP not found")
 }
 
-// isRequestFromLocalMachine checks if the request is coming from the local machine (localhost or local IP)
+// Checks if the incoming request is from the local machine (localhost or local IP)
 func isRequestFromLocalMachine(r *http.Request) (bool, string, error) {
 	// Get the local IP address of the system
 	localIP, err := getLocalIP()
@@ -82,8 +86,6 @@ func isRequestFromLocalMachine(r *http.Request) (bool, string, error) {
 		return false, "Failed to get client IP address", err
 	}
 
-	// fmt.Printf("LocalIP: %s || Client IP: %s\n", localIP, clientIP)
-
 	// Check if the client is accessing from localhost or the local machine's IP
 	if clientIP == "localhost" || clientIP == "127.0.0.1" || clientIP == localIP {
 		return true, "Success", nil
@@ -92,7 +94,7 @@ func isRequestFromLocalMachine(r *http.Request) (bool, string, error) {
 	return false, "Forbidden", nil
 }
 
-// addClip handles the request to add a new clip to the database
+// Handles adding a new clip to the database
 func addClip(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -119,7 +121,7 @@ func addClip(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
-// getClips handles the request to retrieve all clips from the database
+// Handles fetching all clips from the database
 func getClips(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -156,7 +158,7 @@ func getClips(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(clips)
 }
 
-// flushDatabase handles the request to flush all clips from the database
+// Handles flushing the database (deletes all clips)
 func flushDatabase(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -186,6 +188,7 @@ func flushDatabase(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Database flushed successfully"))
 }
 
+// Validates if the request is from the local machine
 func validateUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -208,113 +211,86 @@ func validateUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	http.HandleFunc("/add_clip", addClip)
-	http.HandleFunc("/clips", getClips)
-	http.HandleFunc("/flush", flushDatabase)        // Add the flush handler
-	http.HandleFunc("/validate_user", validateUser) // Add the validate user handler
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
+func updatePort(port string) string {
+	// Check if the port starts with a colon ":"
+	if !strings.HasPrefix(port, ":") {
+		// Add a colon if it's missing
+		port = ":" + port
+	}
+	return port
+}
 
+// Redirects incoming HTTP requests to HTTPS
+func redirectToHttps(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+}
+
+// Sets up and starts the HTTP and HTTPS servers
+func startServer() {
 	// Get the local IP address
 	localIP, err := getLocalIP()
 	if err != nil {
 		log.Fatal("Failed to get local IP address: ", err)
 	}
 
-	// Start the server
-	port := ":8080"
+	// Start the HTTP server (on port 8080)
+	port := os.Getenv("CLIPIFY_HTTP_PORT")
+	if port == "" {
+		port = ":8080" // Default to 8080 port for HTTP
+	}
+	port = updatePort(port)
+	httpsPort := os.Getenv("CLIPIFY_HTTPS_PORT")
+	if httpsPort == "" {
+		httpsPort = ":8443" // Default to 8443 port for HTTPS
+	}
+	httpsPort = updatePort(httpsPort)
 
-	// Start the server on both localhost and local IP
-	// Start the server at localhost (for local testing)
+	// Get the SystemCertPool and create a custom root CA pool
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	// Read the SSL certificate
+	certs, err := os.ReadFile("localhost.crt")
+	if err != nil {
+		log.Fatalf("Failed to append %q to RootCAs: %v", "localhost.crt", err)
+	}
+	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+		log.Println("No certs appended, using system certs only")
+	}
+
+	// Start server on local IP (for LAN access)
+	address := fmt.Sprintf("%s%s", localIP, httpsPort)
+	server_local_ip := &http.Server{
+		Addr:      address,
+		TLSConfig: &tls.Config{RootCAs: rootCAs},
+	}
+
+	// Start HTTP and HTTPS servers in separate goroutines
 	go func() {
-		fmt.Printf("Server started at http://localhost%s\n", port)
-		if err := http.ListenAndServe("localhost"+port, nil); err != nil {
-			log.Fatal("Error starting server on localhost: ", err)
+		fmt.Printf("Server started at https://%s\n", address)
+		// Wrap the handler to apply HSTS for all HTTPS requests
+		if err := server_local_ip.ListenAndServeTLS("localhost.crt", "localhost.key"); err != nil {
+			log.Fatal("Error starting HTTPS server on local IP: ", err)
 		}
 	}()
 
-	// // Set up mDNS (Multicast DNS) for local network discovery
-	// // Create a new mDNS service
-	// server, err := zeroconf.Register("clipify", "_http._tcp", "local.", 8080, nil, nil)
-	// if err != nil {
-	// 	log.Fatal("Failed to register mDNS service:", err)
-	// }
-	// defer server.Shutdown()
-
-	// Start the server on the local IP (for LAN access)
-	var address string
-	_, status := os.LookupEnv("IS_DOCKERISED")
-	if status {
-		address = fmt.Sprintf("%s%s", "0.0.0.0", port)
-	} else {
-		address = fmt.Sprintf("%s%s", localIP, port)
-	}
-	fmt.Printf("Local IP: %s\n", localIP)
-	fmt.Printf("Server started at http://%s\n", address)
-	if err := http.ListenAndServe(localIP+port, nil); err != nil {
-		log.Fatal("Error starting server on local IP: ", err)
+	if err := http.ListenAndServe(localIP+port, http.HandlerFunc(redirectToHttps)); err != nil {
+		log.Fatal("Error starting server on localhost: ", err)
 	}
 }
 
-// getClips handles the request to retrieve clips from the database with pagination
-func getClipsPaginated(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
+func main() {
+	// Register routes
+	http.HandleFunc("/add_clip", addClip)
+	http.HandleFunc("/clips", getClips)
+	http.HandleFunc("/flush", flushDatabase)
+	http.HandleFunc("/validate_user", validateUser)
 
-	// Get pagination parameters
-	pageStr := r.URL.Query().Get("page")
-	limitStr := r.URL.Query().Get("limit")
+	// Serve static files under the root path
+	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		page = 1
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 {
-		limit = 10 // Default limit
-	}
-
-	offset := (page - 1) * limit
-
-	// Retrieve paginated clips from the database
-	rows, err := db.Query("SELECT id, text, language, name, device_type, browser FROM clips LIMIT ? OFFSET ?", limit, offset)
-	if err != nil {
-		http.Error(w, "Failed to fetch clips from database", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	var clips []Clip
-	for rows.Next() {
-		var clip Clip
-		err := rows.Scan(&clip.ID, &clip.Text, &clip.Language)
-		if err != nil {
-			http.Error(w, "Failed to scan clip", http.StatusInternalServerError)
-			return
-		}
-		clips = append(clips, clip)
-	}
-
-	// Get the total number of clips for pagination info
-	var totalClips int
-	err = db.QueryRow("SELECT COUNT(*) FROM clips").Scan(&totalClips)
-	if err != nil {
-		http.Error(w, "Failed to fetch total clip count", http.StatusInternalServerError)
-		return
-	}
-
-	// Calculate total number of pages
-	totalPages := (totalClips + limit - 1) / limit
-
-	// Respond with the clips and pagination info
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"clips":       clips,
-		"totalPages":  totalPages,
-		"currentPage": page,
-		"totalClips":  totalClips,
-	})
+	// Start the server
+	startServer()
 }
