@@ -1,0 +1,230 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clipify</title>
+  <script src="script.js" defer></script>
+  <link rel="shortcut icon" type="image/x-icon" href="./logo.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <style>
+    * {
+      font-size: 12px;
+    }
+
+    .floating-effect {
+      box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
+    }
+
+    .hover-lift {
+      transition: all 0.3s ease;
+    }
+
+    .hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: rgba(0, 0, 0, 0.1) 0px 20px 60px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 2px;
+      height: 7px;
+    }
+
+    /* Track */
+    ::-webkit-scrollbar-track {
+      background: white;
+    }
+
+    /* Handle */
+    ::-webkit-scrollbar-thumb {
+      background: #f0f0f0;
+    }
+
+    /* Handle on hover */
+    ::-webkit-scrollbar-thumb:hover {
+      background: #f0f0f0;
+    }
+
+    /* Custom Scrollbar Style for Monaco Editor */
+    .monaco-editor .scrollbar {
+      height: 2px !important;
+      /* Set scrollbar height to 1px */
+      width: 2px !important;
+    }
+
+    /* Custom scrollbar track */
+    .monaco-editor .scrollbar .slider {
+      background-color: rgba(0, 0, 0, 0.2);
+      /* Optional: Change the background color */
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen w-screen">
+  <!-- Top Navigation -->
+  <nav class="w-full bg-white/80 backdrop-blur-md border-b border-gray-200 z-50">
+    <div class="container mx-auto px-1">
+      <div class="flex items-center justify-between h-12">
+        <div class="flex items-center  justify-center pl-3">
+          <img src="./logo.png" alt="" srcset="" class="w-10 h-10">
+          <h1 class="text-2xl font-bold gradient-text md:ml-0 sm:ml-[-2px]">Clipify</h1>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex flex-row h-[95%] overflow-hidden">
+    <!-- Sidebar -->
+    <!-- <aside
+        class="hidden lg:flex flex-col w-64 bg-white/80 backdrop-blur-md border-r border-gray-200 pl-4 py-4"
+      >
+        <div
+            id="sidebar"
+            class="overflow-scroll "
+          >
+        </div>
+      </aside> -->
+
+    <!-- Main Content -->
+    <div class="flex flex-col flex-1">
+      <div class="flex flex-col items-center h-full justify-between">
+        <!-- Messages Section -->
+        <div id="messages"
+          class="p-2 h-[70vh] overflow-y-auto w-[100%] w-[90%] sm:w-[90%] md:w-[80%] lg:w-[75%] xl:w-[74%] 2xl:w-[60%] ">
+          <!-- Welcome Message -->
+          <div class="rounded-2xl p-8 text-center">
+            <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-code text-blue-600 text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-900 mb-2">
+              Welcome to Clipify!
+            </h3>
+            <p class="text-gray-600 max-w-lg mx-auto">
+              Share your text with people around the world. Start by typing your
+              text in the editor below.
+            </p>
+          </div>
+        </div>
+
+        <!-- Editor Section -->
+        <div class="w-full fixed bottom-0 mb-2 items-center  justify-center flex" id="mainEditorDiv">
+          <div
+            class="bg-white w-[90%] sm:w-[90%] md:w-[80%] lg:w-[75%] xl:w-[74%] 2xl:w-[60%] p-3  rounded-2xl border border-grey-200 floating-effect">
+            <div class="flex w-full items-center justify-between gap-4 mb-2">
+              <!-- Language Selector -->
+              <div class="w-1/2   flex item-center relative  justify-start">
+                <select id="languageSelect" onchange="changeLanguage()"
+                  class="px-4 py-2.5 rounded-xl bg-gray-50 w-3/4 sm:w-3/4 md:w-3/5 lg:w-1/2 xl:w-1/2 2xl:w-1/2 border border-gray-200 text-sm text-gray-700 relative hover:border-blue-500 transition"></select>
+              </div>
+              <!-- Action Buttons -->
+              <div class="flex gap-2 w-1/2 item-center justify-end">
+                <button
+                  class="px-4 py-2 flex justify-center items-center gap-2 text-sm rounded-xl truncate bg-yellow-50 text-yellow-700 hover:bg-yellow-100 transition"
+                  id="refresh">
+                  <i class="fas fa-refresh "></i>
+                  <span class="hidden md:inline ">Refresh</span>
+                </button>
+
+                <button
+                class="px-4 py-2 flex justify-center items-center gap-2 text-sm rounded-xl truncate bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition"
+                id="paste">
+                <i class="fas fa-paste "></i>
+                <span class="hidden md:inline ">Paste</span>
+              </button>
+                <button
+                  class="px-4 py-2 text-sm rounded-xl flex justify-center items-center gap-2 truncate bg-purple-50 text-purple-700 hover:bg-purple-100 transition"
+                  id="formatCode">
+                  <i class="fas fa-magic "></i>
+                  <span class="hidden md:inline ">Format</span>
+                </button>
+                <button
+                  class="px-4 py-2 text-sm rounded-xl flex justify-center items-center gap-2 truncate bg-red-50 text-red-700 hover:bg-red-100 transition"
+                  id="clearCode">
+                  <i class="fas fa-eraser "></i>
+                  <span class="hidden md:inline ">Clear</span>
+                </button>
+                <button
+                  class="px-4 py-2 text-sm rounded-xl hidden flex justify-center items-center gap-2 truncate bg-orange-50 text-orange-700 hover:bg-orange-100 transition"
+                  id="clearAll">
+                  <i class="fas fa-trash-alt "></i>
+                  <span class="hidden md:inline ">Flush Clips</span>
+                </button>
+                <button id="sendButton"
+                  class="px-4 py-2 text-sm rounded-xl flex justify-center items-center gap-2 truncate bg-blue-50 text-blue-700 hover:bg-blue-100 transition">
+                  <i class="fas fa-paper-plane"></i>
+                  <span class="hidden md:inline   ">Share</span>
+                </button>
+              </div>
+            </div>
+            <!-- Editor -->
+            <div id="editor"
+              class="h-[17vh] sm:h-[17vh] md:h-[17vh] lg:h-[17vh] xl:h-[17vh] 2xlh-[17vh] sm:h-[17vh] delay-150 duration-300 rounded-xl border border-gray-200">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 transform translate-y-full opacity-0 transition-all duration-300">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 px-6 py-3 flex items-center gap-2">
+      <i class="fas fa-check-circle text-green-500"></i>
+      <span id="toastMessage" class="text-gray-700"></span>
+    </div>
+  </div>
+
+
+
+
+  <div class="relative z-10 hidden" aria-labelledby="modal-title" id="flushModel" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-gray-500/75 transition-opacity" aria-hidden="true"></div>
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <div
+          class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div
+                class="mx-auto flex size-12 shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:size-10">
+                <svg class="size-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" aria-hidden="true" data-slot="icon">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-base font-semibold text-gray-900" id="modal-title">Flush all clips</h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500">Are you sure you want to flush all the clips account? All of your
+                    data will be permanently removed. This action cannot be undone.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+            <button type="button"
+              class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-blue-500 sm:ml-3 sm:w-auto"
+              id="flushAllClips">Flush</button>
+            <button type="button"
+              class="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 shadow-xs ring-gray-300 ring-inset hover:bg-gray-50 sm:mt-0 sm:w-auto"
+              id="notFlushAllClips">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+
+</html>
