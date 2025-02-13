@@ -28,11 +28,18 @@ COPY --from=builder /app/clipify /app/clipify
 # Copy the static files (HTML, JS, CSS) into the container
 COPY --from=builder /app/static /app/static
 
+# Copy the statically compiled binary from the builder stage
+COPY --from=builder /app/localhost.crt /app/localhost.crt
+
+# Copy the statically compiled binary from the builder stage
+COPY --from=builder /app/localhost.key /app/localhost.key
+
 # Set env var to run on 0.0.0.0
 ENV IS_DOCKERISED=true
 
-# Expose the port the app will run on
-EXPOSE 8080
+# Set environment variables for HTTP and HTTPS ports (with defaults)
+ENV CLIPIFY_HTTP_PORT=8080
+ENV CLIPIFY_HTTPS_PORT=8443
 
 # Run the statically compiled Go binary when the container starts
 CMD ["/app/clipify"]
