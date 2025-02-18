@@ -99,6 +99,14 @@ For example, to run the server on port `9000` for HTTP and port `9443` for HTTPS
 CLIPIFY_HTTP_PORT=9000 CLIPIFY_HTTPS_PORT=9443 docker run -d --network host --name clipify clipify
 ```
 
+## Features
+
+- Seamless Copy-Paste – Effortlessly copy and paste text with minimal friction.  
+- Language Detection – displays the programming language of the copied text.  
+- Intelligent Formatting – Provides a built-in text formatter for improved readability and structure.  
+- One-Click Clip Management – Admins can clear all stored clips instantly with a single action.  
+- User Metadata Capture – Logs essential user details, including timestamp, detected language, and operating system information.  
+   
 ## Contributing
 
 Contributions are welcome! Please
