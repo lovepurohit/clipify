@@ -1,0 +1,39 @@
+name: Build and Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build and Upload Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build the Application
+        run: |
+          go build -o clipify main.go
+
+      - name: Package the Application
+        run: |
+          mkdir release
+          cp clipify LICENSE README.md Dockerfile -t release/
+          tar -czvf clipify-${{ github.event.release.tag_name }}.tar.gz -C release .
+
+      - name: Upload Artifact to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: clipify-${{ github.event.release.tag_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Success (Optional)
+        run: echo "Release ${{ github.event.release.tag_name }} is now available!"
