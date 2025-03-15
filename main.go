@@ -64,9 +64,19 @@ func getLocalIP() (string, error) {
 	// Loop through all interfaces to find the local IP address
 	for _, addr := range addrs {
 		// Check if the address is a valid IP address and is not a loopback address
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-			return ipnet.IP.String(), nil
+		ipnet, ok := addr.(*net.IPNet)
+		if !ok || ipnet.IP.IsLoopback() || ipnet.IP.To4() == nil {
+			continue
 		}
+
+		// Ignore link-local (169.x.x.x) addresses
+		if ipnet.IP.IsLinkLocalUnicast() {
+			continue
+		}
+
+		// Return the first valid local IP address found
+		return ipnet.IP.String(), nil
+
 	}
 
 	return "", fmt.Errorf("local IP not found")
@@ -231,6 +241,12 @@ func startServer() {
 	localIP, err := getLocalIP()
 	if err != nil {
 		log.Fatal("Failed to get local IP address: ", err)
+	}
+
+	// Run on 0.0.0.0 if its inside docker
+	isDockerised := os.Getenv("IS_DOCKERISED")
+	if isDockerised != "" {
+		localIP = "0.0.0.0"
 	}
 
 	// Start the HTTP server (on port 8080)
