@@ -1,39 +1,47 @@
 name: Build and Release
-
 on:
   release:
     types: [created]
-
 jobs:
   build:
     name: Build and Upload Release
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
-      - name: Build the Application
-        run: |
-          go build -o clipify main.go
-
+      
+      #build for Linux
+      - name: Build for Linux
+        run: go build -o clipify-linux main.go
+      
+      #build for Windows
+      - name: Build for Windows
+        run: GOOS=windows GOARCH=amd64 go build -o clipify-windows.exe main.go
+      
+      #build for macOS
+      - name: Build for macOS
+        run: GOOS=darwin GOARCH=amd64 go build -o clipify-macos main.go
+      
       - name: Package the Application
         run: |
           mkdir release
-          cp clipify LICENSE README.md Dockerfile -t release/
+          cp clipify-linux LICENSE README.md Dockerfile -t release/
           tar -czvf clipify-${{ github.event.release.tag_name }}.tar.gz -C release .
-
-      - name: Upload Artifact to Release
+      
+      - name: Upload Artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: clipify-${{ github.event.release.tag_name }}.tar.gz
+          files: |
+            clipify-${{ github.event.release.tag_name }}.tar.gz
+            clipify-linux
+            clipify-windows.exe
+            clipify-macos
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Notify Success (Optional)
-        run: echo "Release ${{ github.event.release.tag_name }} is now available!"
+          
+      - name: Notify Success
+        run: echo "Release ${{ github.event.release.tag_name }} with platform-specific builds is now available!"
