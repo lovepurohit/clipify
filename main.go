@@ -2,10 +2,11 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +15,12 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+//go:embed static/*
+var staticFiles embed.FS
+
+//go:embed localhost.crt localhost.key
+var certsFS embed.FS
 
 // Clip represents a shared clipboard clip
 type Clip struct {
@@ -261,33 +268,41 @@ func startServer() {
 	}
 	httpsPort = updatePort(httpsPort)
 
-	// Get the SystemCertPool and create a custom root CA pool
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-
 	// Read the SSL certificate
-	certs, err := os.ReadFile("localhost.crt")
+	certs, err := certsFS.ReadFile("localhost.crt")
 	if err != nil {
 		log.Fatalf("Failed to append %q to RootCAs: %v", "localhost.crt", err)
 	}
-	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
-		log.Println("No certs appended, using system certs only")
+
+	keyBytes, err := certsFS.ReadFile("localhost.key")
+	if err != nil {
+		log.Fatalf("Failed to read embedded key: %v", err)
+	}
+
+	cert, err := tls.X509KeyPair(certs, keyBytes)
+	if err != nil {
+		log.Fatal("Error loading embedded certificates: ", err)
+	}
+
+	// Create a TLS config with the embedded certificate
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
 	}
 
 	// Start server on local IP (for LAN access)
 	address := fmt.Sprintf("%s%s", localIP, httpsPort)
 	server_local_ip := &http.Server{
-		Addr:      address,
-		TLSConfig: &tls.Config{RootCAs: rootCAs},
+		Addr: address,
+		// TLSConfig: &tls.Config{RootCAs: rootCAs},
+		TLSConfig: tlsConfig,
 	}
 
 	// Start HTTP and HTTPS servers in separate goroutines
 	go func() {
 		fmt.Printf("Server started at https://%s\n", address)
 		// Wrap the handler to apply HSTS for all HTTPS requests
-		if err := server_local_ip.ListenAndServeTLS("localhost.crt", "localhost.key"); err != nil {
+		if err := server_local_ip.ListenAndServeTLS("", ""); err != nil {
 			log.Fatal("Error starting HTTPS server on local IP: ", err)
 		}
 	}()
@@ -304,8 +319,15 @@ func main() {
 	http.HandleFunc("/flush", flushDatabase)
 	http.HandleFunc("/validate_user", validateUser)
 
-	// Serve static files under the root path
-	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("static"))))
+	// Create a new filesystem rooted at the "static" subdirectory
+	// of the embedded filesystem.
+	staticFS, err := fs.Sub(staticFiles, "static")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Serve static files from the new filesystem at the root path "/"
+	http.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	// Start the server
 	startServer()
