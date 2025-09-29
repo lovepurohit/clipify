@@ -10,9 +10,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
-
+      
+	"github.com/otiai10/opengraph"
 	_ "modernc.org/sqlite"
 )
 
@@ -30,6 +32,13 @@ type Clip struct {
 	Name       string `json:"name"`
 	DeviceType string `json:"device_type"`
 	Browser    string `json:"browser"`
+}
+
+type LinkPreview struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Image       string `json:"image"`
+	URL         string `json:"url"`
 }
 
 var db *sql.DB
@@ -228,6 +237,49 @@ func validateUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Checks from 
+func linkPreviewHandler(w http.ResponseWriter, r *http.Request) {
+	whitelist := map[string]bool{
+		"stackoverflow.com": true,
+		"stackexchange.com": true,
+		"github.com":        true,
+	}
+
+	qURL := r.URL.Query().Get("url")
+
+	parsedURL, err := url.Parse(qURL)
+	if err != nil {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	if !whitelist[parsedURL.Hostname()] {
+		http.Error(w, "Preview not supported for this site", http.StatusNotAcceptable)
+		return
+	}
+
+	og, err := opengraph.Fetch(qURL)
+	if err != nil {
+		http.Error(w, "Failed to fetch link preview", http.StatusInternalServerError)
+		return
+	}
+
+	preview := LinkPreview{
+		Title:       og.Title,
+		Description: og.Description,
+		URL:         qURL,
+	}
+	if len(og.Image) > 0 {
+		preview.Image = og.Image[0].URL
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(preview); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
 func updatePort(port string) string {
 	// Check if the port starts with a colon ":"
 	if !strings.HasPrefix(port, ":") {
@@ -318,6 +370,7 @@ func main() {
 	http.HandleFunc("/clips", getClips)
 	http.HandleFunc("/flush", flushDatabase)
 	http.HandleFunc("/validate_user", validateUser)
+	http.HandleFunc("/link_preview", linkPreviewHandler)
 
 	// Create a new filesystem rooted at the "static" subdirectory
 	// of the embedded filesystem.
