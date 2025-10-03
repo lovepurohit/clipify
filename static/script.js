@@ -220,12 +220,12 @@ async function fetchClip() {
       case browser.includes("windows"):
         icon = "./window_icon.svg";
         break;
-      case browser.includes("mac") :
+      case browser.includes("mac"):
         icon = "./mac_icon.png";
         break;
-      case  browser.includes("ios"):
-      icon = "./apple_icon.svg";
-      break;
+      case browser.includes("ios"):
+        icon = "./apple_icon.svg";
+        break;
       case browser.includes("android"):
         icon = "./android_icon.svg";
         break;
@@ -429,9 +429,8 @@ function generateUsername() {
     "Master",
     "Expert",
   ];
-  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${
-    nouns[Math.floor(Math.random() * nouns.length)]
-  }`;
+  return `${adjectives[Math.floor(Math.random() * adjectives.length)]}${nouns[Math.floor(Math.random() * nouns.length)]
+    }`;
 }
 
 function escapeHtml(unsafe) {
@@ -463,7 +462,28 @@ function createMessage(username, datetime, code, language, isMine, id, index, ic
         ? convertToYouTubeEmbedUrl(urls[0])
         : urls[0]
       : null;
+
     let isYoutube = urls && urls[0]?.includes("youtube") ? true : false;
+
+    if (firstUrl && !isYoutube) {
+      fetch(`/link_preview?url=${encodeURIComponent(firstUrl)}`)
+        .then(res => res.json())
+        .then(preview => {
+          if (preview?.title) {
+            const previewHTML = `
+          <div class="link-preview mt-2 p-2 border rounded-lg bg-white shadow-sm">
+            ${preview.image ? `<img src="${preview.image}" class="w-full h-32 object-cover rounded-md mb-2" />` : ""}
+            <div class="text-sm font-bold">${preview.title}</div>
+            <div class="text-xs text-gray-600">${preview.description || ""}</div>
+            <a href="${preview.url}" target="_blank" class="text-blue-500 text-xs underline">Visit</a>
+          </div>
+        `;
+            document.getElementById(id).insertAdjacentHTML("afterend", previewHTML);
+          }
+        })
+        .catch(err => console.error("Link preview failed:", err));
+    }
+
     const messageHTML = `
   <div class="w-full items-start flex ${alignmentClass} my-1 mb-3">
             <div class=" ${colorFamily} glass-effect rounded-2xl p-2 w-[90%] sm:w-[90%] md:w-[80%] lg:w-[50%] xl:w-[45%] 2xl:w-[45%]  border border-gray-200 hover:neon-border transition-all duration-300">
@@ -493,11 +513,10 @@ function createMessage(username, datetime, code, language, isMine, id, index, ic
             </div>
             </div>
           <div id="${id}" class="code-editor-container" style="overflow: auto; border-radius: 10px; max-height: 20vh; width:100%"></div>
-        ${
-          language === "plaintext" && firstUrl && isYoutube
-            ? `<iframe src="${firstUrl}" class="w-full mt-2 border rounded-lg shadow-md" style="height: 20vh;"></iframe>`
-            : ""
-        }
+        ${language === "plaintext" && firstUrl && isYoutube
+        ? `<iframe src="${firstUrl}" class="w-full mt-2 border rounded-lg shadow-md" style="height: 20vh;"></iframe>`
+        : ""
+      }
             </div>
             </div>
         `;
@@ -661,19 +680,19 @@ document.getElementById("refresh")?.addEventListener("click", () => {
 });
 
 // paste
-document.getElementById("paste")?.addEventListener("click", async() => {
+document.getElementById("paste")?.addEventListener("click", async () => {
   try {
     const text = await navigator?.clipboard?.readText();
-      if (editor) {
-          const position = editor.getPosition();
-          editor.executeEdits("", [{
-              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
-              text: text,
-              forceMoveMarkers: true
-          }]);
-      }
+    if (editor) {
+      const position = editor.getPosition();
+      editor.executeEdits("", [{
+        range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+        text: text,
+        forceMoveMarkers: true
+      }]);
+    }
   } catch (err) {
-      console.error("Failed to read clipboard: ", err);
+    console.error("Failed to read clipboard: ", err);
   }
 });
 // Language selection handler with animation
